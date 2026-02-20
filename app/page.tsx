@@ -382,56 +382,8 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* Summary table per plan */}
-                  {planFields.length > 0 && (
-                    <div className="overflow-hidden rounded-xl border border-border bg-card">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="px-4 py-2.5 text-left text-xs font-medium uppercase text-muted-foreground">
-                              Field
-                            </th>
-                            {ROLES.map((r) => (
-                              <th
-                                key={r}
-                                className="px-4 py-2.5 text-center text-xs font-medium uppercase capitalize text-muted-foreground"
-                              >
-                                {r}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {planFields.map((field, i) => (
-                            <tr
-                              key={field}
-                              className={
-                                i < planFields.length - 1 ? "border-b border-border" : ""
-                              }
-                            >
-                              <td className="px-4 py-2.5 font-medium">{labels[field]}</td>
-                              {ROLES.map((role) => (
-                                <td key={role} className="px-4 py-2.5 text-center">
-                                  {orgConfig[plan][role][field] ? (
-                                    <Badge className="bg-primary/15 text-primary border-primary/20">
-                                      Enabled
-                                    </Badge>
-                                  ) : (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-muted-foreground/50"
-                                    >
-                                      Disabled
-                                    </Badge>
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+
+
                 </div>
               )
             })}
