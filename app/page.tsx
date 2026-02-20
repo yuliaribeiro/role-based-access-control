@@ -95,7 +95,7 @@ export default function Home() {
       {/* ── Header ── */}
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
-          <span className="text-sm font-semibold">Feature Gate POC</span>
+          <span className="text-sm font-semibold">Ju Ribeiro - Role Based Access Control POC</span>
           <div className="flex gap-1">
             {NAV.map((item) => (
               <Button
