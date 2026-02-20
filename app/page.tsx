@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Settings, Eye, Lock, Check, X } from "lucide-react"
+import { Settings, Eye, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type Plan = "basic" | "medium" | "max"
@@ -12,7 +12,7 @@ type Field = "name" | "weight" | "species" | "gender"
 
 const PLANS: Plan[] = ["basic", "medium", "max"]
 const FIELDS: Field[] = ["name", "weight", "species", "gender"]
-const FIELD_LABELS: Record<Field, string> = {
+const DEFAULT_LABELS: Record<Field, string> = {
   name: "Name",
   weight: "Weight",
   species: "Species",
@@ -30,6 +30,7 @@ const DEFAULT_CONFIG: Record<Plan, Field[]> = {
 export default function Home() {
   const [view, setView] = useState<"viewer" | "admin">("viewer")
   const [config, setConfig] = useState<Record<Plan, Field[]>>(DEFAULT_CONFIG)
+  const [labels, setLabels] = useState<Record<Field, string>>(DEFAULT_LABELS)
   const [activePlan, setActivePlan] = useState<Plan>("basic")
 
   function toggle(plan: Plan, field: Field) {
@@ -98,27 +99,23 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Animal fields */}
+            {/* Animal fields -- only visible ones render */}
             <div className="rounded-xl border border-border bg-card p-1">
-              {FIELDS.map((field) => {
-                const visible = visibleFields.includes(field)
-                return (
+              {visibleFields.length === 0 ? (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  No fields are enabled for this plan.
+                </p>
+              ) : (
+                visibleFields.map((field) => (
                   <div
                     key={field}
                     className="flex items-center justify-between rounded-lg px-4 py-3"
                   >
-                    <span className="text-sm text-muted-foreground">{FIELD_LABELS[field]}</span>
-                    {visible ? (
-                      <span className="text-sm font-medium text-foreground">{ANIMAL[field]}</span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground/50">
-                        <Lock className="size-3" />
-                        Hidden
-                      </span>
-                    )}
+                    <span className="text-sm text-muted-foreground">{labels[field]}</span>
+                    <span className="text-sm font-medium text-foreground">{ANIMAL[field]}</span>
                   </div>
-                )
-              })}
+                ))
+              )}
             </div>
           </div>
         ) : (
@@ -144,26 +141,35 @@ export default function Home() {
                     {FIELDS.map((field) => {
                       const on = config[plan].includes(field)
                       return (
-                        <label
+                        <div
                           key={field}
-                          className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-secondary/60"
+                          className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 hover:bg-secondary/60"
                         >
                           <div className="flex items-center gap-2">
                             {on ? (
-                              <Check className="size-3.5 text-primary" />
+                              <Check className="size-3.5 shrink-0 text-primary" />
                             ) : (
-                              <X className="size-3.5 text-muted-foreground/40" />
+                              <X className="size-3.5 shrink-0 text-muted-foreground/40" />
                             )}
-                            <span className={cn("text-sm", on ? "text-foreground" : "text-muted-foreground")}>
-                              {FIELD_LABELS[field]}
-                            </span>
+                            <input
+                              type="text"
+                              value={labels[field]}
+                              onChange={(e) =>
+                                setLabels((prev) => ({ ...prev, [field]: e.target.value }))
+                              }
+                              className={cn(
+                                "w-full rounded border border-transparent bg-transparent px-1.5 py-0.5 text-sm outline-none transition-colors focus:border-border focus:bg-secondary",
+                                on ? "text-foreground" : "text-muted-foreground"
+                              )}
+                              aria-label={`Label for ${field}`}
+                            />
                           </div>
                           <Switch
                             checked={on}
                             onCheckedChange={() => toggle(plan, field)}
-                            aria-label={`${FIELD_LABELS[field]} in ${plan}`}
+                            aria-label={`${labels[field]} in ${plan}`}
                           />
-                        </label>
+                        </div>
                       )
                     })}
                   </div>
@@ -189,7 +195,7 @@ export default function Home() {
                 <tbody>
                   {FIELDS.map((field, i) => (
                     <tr key={field} className={i < FIELDS.length - 1 ? "border-b border-border" : ""}>
-                      <td className="px-4 py-2.5 font-medium">{FIELD_LABELS[field]}</td>
+                      <td className="px-4 py-2.5 font-medium">{labels[field]}</td>
                       {PLANS.map((plan) => (
                         <td key={plan} className="px-4 py-2.5 text-center">
                           {config[plan].includes(field) ? (
