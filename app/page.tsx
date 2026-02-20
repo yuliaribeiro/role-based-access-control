@@ -33,13 +33,18 @@ const DEFAULT_PLAN_CONFIG: Record<Plan, Field[]> = {
   max: ["name", "weight", "species", "gender"],
 }
 
-/* Org config: for each role, which fields are enabled (true) or disabled (false).
-   By default all fields are enabled for admin, staff sees name/weight, guest sees only name. */
-function buildDefaultOrgConfig(): Record<Role, Record<Field, boolean>> {
-  return {
+/* Org config: per plan, per role, which fields are enabled (true) or disabled (false).
+   By default admin gets all enabled, staff gets name/weight, guest gets only name. */
+function buildDefaultOrgConfig(): Record<Plan, Record<Role, Record<Field, boolean>>> {
+  const roleDefaults: Record<Role, Record<Field, boolean>> = {
     admin: { name: true, weight: true, species: true, gender: true },
     staff: { name: true, weight: true, species: false, gender: false },
     guest: { name: true, weight: false, species: false, gender: false },
+  }
+  return {
+    basic: JSON.parse(JSON.stringify(roleDefaults)),
+    medium: JSON.parse(JSON.stringify(roleDefaults)),
+    max: JSON.parse(JSON.stringify(roleDefaults)),
   }
 }
 
@@ -66,10 +71,13 @@ export default function Home() {
     })
   }
 
-  function toggleOrgField(role: Role, field: Field) {
+  function toggleOrgField(plan: Plan, role: Role, field: Field) {
     setOrgConfig((prev) => ({
       ...prev,
-      [role]: { ...prev[role], [field]: !prev[role][field] },
+      [plan]: {
+        ...prev[plan],
+        [role]: { ...prev[plan][role], [field]: !prev[plan][role][field] },
+      },
     }))
   }
 
@@ -172,7 +180,7 @@ export default function Home() {
                 </p>
               ) : (
                 visibleFields.map((field) => {
-                  const enabled = orgConfig[activeRole][field]
+                  const enabled = orgConfig[activePlan][activeRole][field]
                   return (
                     <div
                       key={field}
@@ -301,84 +309,132 @@ export default function Home() {
             <div>
               <h1 className="text-xl font-bold text-balance">Organization Admin</h1>
               <p className="text-sm text-muted-foreground">
-                Control whether each feature is enabled or disabled per user role. Disabled fields
-                still show but are greyed out.
+                For each plan, control whether visible features are enabled or disabled per user
+                role. Only fields turned on in Plan Admin appear here.
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              {ROLES.map((role) => (
-                <div key={role} className="rounded-xl border border-border bg-card">
-                  <div className="border-b border-border px-4 py-3">
-                    <h2 className="text-sm font-semibold capitalize">{role}</h2>
-                    <span className="text-xs text-muted-foreground">
-                      {FIELDS.filter((f) => orgConfig[role][f]).length}/{FIELDS.length} enabled
-                    </span>
+            {PLANS.map((plan) => {
+              const planFields = planConfig[plan]
+              return (
+                <div key={plan} className="flex flex-col gap-3">
+                  {/* Plan heading */}
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold capitalize">{plan} Plan</h2>
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      {planFields.length} {planFields.length === 1 ? "field" : "fields"}
+                    </Badge>
                   </div>
-                  <div className="flex flex-col gap-1 p-2">
-                    {FIELDS.map((field) => {
-                      const enabled = orgConfig[role][field]
-                      return (
-                        <div
-                          key={field}
-                          className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 hover:bg-secondary/60"
-                        >
-                          <div className="flex items-center gap-2">
-                            {enabled ? (
-                              <Check className="size-3.5 shrink-0 text-primary" />
-                            ) : (
-                              <X className="size-3.5 shrink-0 text-muted-foreground/40" />
-                            )}
-                            <span className={cn("text-sm", enabled ? "text-foreground" : "text-muted-foreground")}>
-                              {labels[field]}
-                            </span>
-                          </div>
-                          <Switch
-                            checked={enabled}
-                            onCheckedChange={() => toggleOrgField(role, field)}
-                            aria-label={`${labels[field]} for ${role}`}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Summary */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="px-4 py-2.5 text-left text-xs font-medium uppercase text-muted-foreground">
-                      Field
-                    </th>
-                    {ROLES.map((r) => (
-                      <th key={r} className="px-4 py-2.5 text-center text-xs font-medium uppercase text-muted-foreground capitalize">
-                        {r}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {FIELDS.map((field, i) => (
-                    <tr key={field} className={i < FIELDS.length - 1 ? "border-b border-border" : ""}>
-                      <td className="px-4 py-2.5 font-medium">{labels[field]}</td>
-                      {ROLES.map((role) => (
-                        <td key={role} className="px-4 py-2.5 text-center">
-                          {orgConfig[role][field] ? (
-                            <Badge className="bg-primary/15 text-primary border-primary/20">Enabled</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground/50">Disabled</Badge>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  {planFields.length === 0 ? (
+                    <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                      No fields enabled for this plan. Toggle fields on in Plan Admin first.
+                    </p>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {ROLES.map((role) => {
+                        const enabledCount = planFields.filter(
+                          (f) => orgConfig[plan][role][f]
+                        ).length
+                        return (
+                          <div key={role} className="rounded-xl border border-border bg-card">
+                            <div className="border-b border-border px-4 py-3">
+                              <h3 className="text-sm font-semibold capitalize">{role}</h3>
+                              <span className="text-xs text-muted-foreground">
+                                {enabledCount}/{planFields.length} enabled
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-1 p-2">
+                              {planFields.map((field) => {
+                                const enabled = orgConfig[plan][role][field]
+                                return (
+                                  <div
+                                    key={field}
+                                    className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 hover:bg-secondary/60"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {enabled ? (
+                                        <Check className="size-3.5 shrink-0 text-primary" />
+                                      ) : (
+                                        <X className="size-3.5 shrink-0 text-muted-foreground/40" />
+                                      )}
+                                      <span
+                                        className={cn(
+                                          "text-sm",
+                                          enabled ? "text-foreground" : "text-muted-foreground"
+                                        )}
+                                      >
+                                        {labels[field]}
+                                      </span>
+                                    </div>
+                                    <Switch
+                                      checked={enabled}
+                                      onCheckedChange={() => toggleOrgField(plan, role, field)}
+                                      aria-label={`${labels[field]} for ${role} in ${plan}`}
+                                    />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Summary table per plan */}
+                  {planFields.length > 0 && (
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="px-4 py-2.5 text-left text-xs font-medium uppercase text-muted-foreground">
+                              Field
+                            </th>
+                            {ROLES.map((r) => (
+                              <th
+                                key={r}
+                                className="px-4 py-2.5 text-center text-xs font-medium uppercase capitalize text-muted-foreground"
+                              >
+                                {r}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {planFields.map((field, i) => (
+                            <tr
+                              key={field}
+                              className={
+                                i < planFields.length - 1 ? "border-b border-border" : ""
+                              }
+                            >
+                              <td className="px-4 py-2.5 font-medium">{labels[field]}</td>
+                              {ROLES.map((role) => (
+                                <td key={role} className="px-4 py-2.5 text-center">
+                                  {orgConfig[plan][role][field] ? (
+                                    <Badge className="bg-primary/15 text-primary border-primary/20">
+                                      Enabled
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-muted-foreground/50"
+                                    >
+                                      Disabled
+                                    </Badge>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </main>
